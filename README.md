@@ -1,116 +1,130 @@
-# DINS REFLEX
+# Minus Alex
 
-**Digital Intelligence Neuromorphic Systems**
+**Digital Intelligence Neuromorphic Systems (DINS)**  
+**Local-first voice, vision and desktop interaction demo for the Amazon Alexa+ / MCP contest.**
 
-REFLEX is a compact agent playground with one visible rule:
+> The agent may propose. First Touch decides.
 
-> **The agent may propose. First Touch decides.**
+Minus Alex brings together First Hearing, First Sight, First Touch, a local Resident and an MCP bridge. The demo accepts typed or spoken instructions, recognizes explicitly saved on-screen targets and routes proposed actions through a visible execution boundary. It is designed to demonstrate these components working together on modest hardware rather than requiring a large hosted AI service for every interaction.
 
-The Amazon contest path is deliberately easy to read:
+The underlying application and source directories retain some historical **REFLEX** identifiers. Those internal names are intentional; the presented application is **Minus Alex**.
+
+## What this build demonstrates
+
+- **First Hearing:** browser microphone input, one-shot listening and Conversation mode. Spoken instructions reach the Resident, and spoken replies pause recognition to reduce self-listening. Conversation mode can recover from ordinary `no-speech` events.
+- **Local Resident:** Ollama with `qwen2.5:0.5b`, recent conversation, First Touch events and compact continuity snapshots. Explicit commands for several demonstrated actions have direct routing; other conversation uses the local model.
+- **First Sight:** contest panels for Words, Objects and Faces, plus the Screen Map for capturing and naming real on-screen targets.
+- **Dual-screen Screen Map:** choose a physical monitor, preview or capture it, draw named button regions, move or resize them, and save or load maps. The tested build supports mapped clicks on both the primary and second monitor.
+- **Bonded windows:** bond a desktop window to its captured preview and saved screen perspective, then target its mapped buttons. Native geometry is supplied by the local Screen Bridge.
+- **First Touch:** one visible execution boundary for proposed actions. **AUTO ARM** executes eligible actions after its checks; **MANUAL ARM** holds a proposal until **Pass** or **Cancel pending**. Unresolved or rejected actions do not become native clicks.
+- **Voice-to-touch:** explicit spoken commands such as `click <saved button name>` can resolve a named mapped target and request its click through First Touch. Typing works too.
+- **Native device controls:** Wi-Fi, Bluetooth, volume and brightness on the Windows host through the localhost bridge, subject to hardware support and permissions.
+- **Chamber playground:** lamp, moving square, inscription and pulse actuator, with visible outcomes and an event log.
+
+This is a local Windows-oriented contest/demo build. Actual screen interaction requires its native Screen Bridge and user-granted permissions. Browser speech recognition support varies by browser and environment; typed Resident conversation remains available.
+
+## Architecture
 
 ```text
-Alexa+ / MCP → First Touch → PASS / HALT → Action / Blocked
+Alexa+ / MCP -----------\
+Typed input ------------+--> Resident / action proposal --> First Touch --> action or blocked
+First Hearing ----------/                                  |
+First Sight --> named Screen Map hooks --------------------+
+                                                           |
+                                                           +--> Chamber / host device controls
+                                                           +--> localhost Screen Bridge --> native click
 ```
 
-## What is in this build
+**Sight is not Touch. Capability is not permission. Understanding is not execution.**
 
-- **Amazon Alexa+ / MCP** on `http://127.0.0.1:8787/mcp`
-- **Resident playground** using local Ollama / `qwen2.5:0.5b`
-- **First Hearing:** microphone → Resident conversation, with optional spoken Resident replies
-- **First Sight contest view:** Words, Objects, Faces, and named screen buttons
-- **Screen Map:** link an entire screen, keep a live preview or capture a frozen frame, draw a real visible button, then move, resize, rename, delete, save/load its map, and keep normalized geometry
-- **First Touch:** mapped screen clicks and agent/device actions still stop at PASS / HALT
-- **Native host controls:** Wi-Fi, Bluetooth, Volume, and Brightness through the localhost bridge
-- **Visible result popups and event log** so action consequences return to the visible field
+The Resident may use saved hook names, but it is not taught to bypass First Touch with raw clicks. **AUTO ARM and MANUAL ARM are different execution policies**, not different sets of permissions for the microphone.
 
-The four device controls operate on the **host laptop**. Resident requests still pass through First Touch before the localhost native bridge executes them.
+## Requirements
 
-The Screen Map is a separate path. It maps a button that actually appears on a captured display and, after First Touch PASS, can send a left click to that saved screen position through a tiny localhost-only bridge.
+- Windows machine for the native Screen Bridge and host device controls.
+- Node.js and npm compatible with the locked dependencies in `package-lock.json`.
+- A supported desktop browser; First Hearing requires browser speech recognition and speech synthesis.
+- Optional for local Resident conversation: [Ollama](https://ollama.com/) with the model `qwen2.5:0.5b` available locally.
+- Administrator approval for the one-time native bridge setup where required.
 
-## Start
+The GitHub repository does **not** include `node_modules`, Ollama model files, runtime data, local state or repair archives.
 
-Double-click:
+## Start on Windows
+
+From a fresh checkout, install the project dependencies:
+
+```cmd
+npm.cmd ci
+```
+
+If you want the local Resident, start Ollama and make the expected model available:
+
+```cmd
+ollama pull qwen2.5:0.5b
+```
+
+For native screen and host controls, run the one-time bridge setup as Administrator, following `INSTALL.md`:
+
+```powershell
+.\scripts\setup-native-bridge.ps1
+```
+
+Then use the supplied launchers:
 
 ```text
 START-REFLEX.cmd
 START-AMAZON-MCP.cmd
 ```
 
-`START-REFLEX.cmd` starts the registered elevated Screen Bridge task on port `8790` when needed. Run `scripts\setup-native-bridge.ps1` once as Administrator on each machine or after moving the project.
+The internal launcher name `START-REFLEX.cmd` is retained for compatibility. A separate `START-SCREEN-BRIDGE.cmd` is available if needed by your setup.
 
-REFLEX UI:
+| Local service | Address |
+| --- | --- |
+| Minus Alex UI | `http://127.0.0.1:4174/` |
+| Amazon MCP | `http://127.0.0.1:8787/mcp` |
+| Screen Bridge health | `http://127.0.0.1:8790/health` |
+| Ollama, when installed | `http://127.0.0.1:11434/` |
 
-```text
-http://127.0.0.1:4174/
+To verify the frontend production bundle:
+
+```cmd
+npm.cmd run build
 ```
 
-Amazon MCP:
+## Available tool routes
 
-```text
-http://127.0.0.1:8787/mcp
-```
+The application tool registry includes these action names. Availability to a particular connected MCP client depends on the bridge and its advertised tools.
 
-Screen Bridge health:
+| Tool | Requested action |
+| --- | --- |
+| `chamber.toggle_lamp` | Toggle the lamp |
+| `chamber.move_square` | Move the square left or right |
+| `chamber.set_inscription` | Change the inscription |
+| `chamber.pulse` | Activate the pulse actuator |
+| `device.set_wifi` | Set host Wi-Fi on/off |
+| `device.set_bluetooth` | Set host Bluetooth on/off |
+| `device.set_volume` | Set host volume, 0-100 |
+| `device.set_brightness` | Set host brightness, 0-100 |
+| `screen.activate_hook` | Request one explicitly saved named screen target |
 
-```text
-http://127.0.0.1:8790/health
-```
+Only an eligible, accepted action proceeds through the selected First Touch mode. Native capabilities depend on the local Windows machine and bridge.
 
-## Published MCP tools
+## Mapping and voice control
 
-| Tool | What it proposes |
-|---|---|
-| `chamber.toggle_lamp` | toggle lamp |
-| `chamber.move_square` | move square left/right |
-| `chamber.set_inscription` | set inscription text |
-| `device.set_wifi` | set host Wi-Fi on/off |
-| `device.set_bluetooth` | set host Bluetooth on/off |
-| `device.set_volume` | set host volume 0-100 |
-| `device.set_brightness` | set host brightness 0-100 |
-| `screen.activate_hook` | activate one explicitly mapped named screen button |
+Choose the physical screen or bond a window in **Screen Map**. Preview or capture its content, draw a box over a visible button and save a meaningful name. The map records normalized geometry and native bounds where available. You can move, resize, rename, remove and save or load target maps.
 
-## First Sight Screen Map
+For example, a saved screen target called `Submit` can be invoked by typing or saying `click Submit`. Explicit saved-name commands take the direct hook route; a missing or ambiguous target must not be replaced with an arbitrary click. With AUTO ARM selected, eligible proposals can execute after checks; MANUAL ARM holds the proposal for review.
 
-The contest build keeps the richer First Sight architecture deliberately small:
+Do not use a mapping to approve security dialogs or perform irreversible actions without reviewing the selected target and execution mode. Native clicks act on the real Windows desktop.
 
-```text
-LINK SCREEN → LIVE / CAPTURE FRAME → DRAW → MOVE / RESIZE / RENAME → SAVE MAP → FIRST TOUCH
-```
+## Project boundaries
 
-A mapped button stores its normalized center and box size together with the captured source dimensions and creation metadata. Existing boxes can be dragged to move, resized from four corner handles, renamed, deleted, and saved/loaded as a stable First Sight map. The Resident sees the name rather than being taught raw click coordinates.
+This repository is a selected contest/demo build, not the complete original WhisperShell research archive. The original project history, private experiments, other organs and large local dependencies are not included. We will document research origins and acknowledgements separately without exposing unrelated private work.
 
-For an actual host click, map from **Entire Screen** in the browser share picker. A window or tab can still be previewed and mapped, but REFLEX will not execute that mapping because browser capture does not expose the operating-system window origin needed to translate it safely to desktop coordinates.
+No license is included yet. Repository visibility alone does not grant permission to reuse or redistribute its code.
 
-Real screen clicks are left-click-only and are forced through **MANUAL First Touch**. PASS sends the click through the localhost bridge. HALT sends nothing.
+## More information
 
-## Native device controls and Screen Map are separate
-
-```text
-Native controls: device.set_wifi / bluetooth / volume / brightness
-Screen hand: captured real button → named screen hook → First Touch → native left click
-```
-
-This separation is intentional. A Wi-Fi tool does not require a Wi-Fi button to be visible on screen, and drawing a screen box does not secretly bind it to one of the native device controls.
-
-## Principle
-
-```text
-Sight is not Touch.
-Capability is not permission.
-Understanding is not execution.
-```
-
-## Resident three-layer memory
-
-The contest Resident keeps a deliberately small local memory stack: recent conversation, recent First Touch events, and compact continuity snapshots of the REFLEX state. The memory survives a browser refresh through localStorage, while execution remains separate: remembered context can shape a proposal, but First Touch still owns PASS or HALT.
-
-
-## First Hearing and speech
-
-The public voice path is deliberately small:
-
-```text
-human voice → First Hearing → Resident + 3-layer memory → speech out
-```
-
-First Hearing is conversation input only. It does not call MCP tools, does not PASS/HALT First Touch, and does not activate mapped screen buttons. When REFLEX speaks, microphone recognition is stopped before playback and may resume afterward in Conversation mode, preventing a simple self-listening loop. Typed Resident conversation remains available when browser speech recognition is unavailable.
+- `INSTALL.md` for setup details.
+- `AMAZON-MCP-README.md` for the MCP bridge.
+- `ARCHITECTURE-AND-SAFETY.md` for execution boundaries.
